@@ -9,10 +9,12 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -50,10 +52,12 @@ public class DomainParser {
 	Thread[] threads = null ;
 	static Map<String, String[]> ip_dns ;
 	static Lock lock ;
+	static int timeOut ;
 	
 	static
 	{
 		ip_dns = new HashMap<>();
+		timeOut = 1 ;
 	}
 	
 	public DomainParser( String ip , Integer port , Integer mask , Integer th)
@@ -62,6 +66,11 @@ public class DomainParser {
 		Port	= port					;
 		Mask	= 32 - mask				;
 		Threads	= th					;
+	}
+	
+	public void setTimeout(int t)
+	{
+		timeOut = t ;
 	}
 	
 	public DomainParser( )
@@ -89,13 +98,13 @@ public class DomainParser {
 	                .setConnectionManager(PoolingHttpClientConnectionManagerBuilder.create()
 	                		.setTlsConfigResolver(x -> {return TlsConfig.DEFAULT; })
 	                		.setDefaultConnectionConfig(ConnectionConfig.custom()
-	                                .setConnectTimeout(Timeout.ofSeconds(1))
-	                                .setSocketTimeout(Timeout.ofSeconds(1))
-	                                .setValidateAfterInactivity(TimeValue.ofSeconds(1))
-	                                .setTimeToLive(TimeValue.ofSeconds(1))
+	                                .setConnectTimeout(Timeout.ofSeconds(timeOut))
+	                                .setSocketTimeout(Timeout.ofSeconds(timeOut))
+	                                .setValidateAfterInactivity(TimeValue.ofSeconds(timeOut))
+	                                .setTimeToLive(TimeValue.ofSeconds(timeOut))
 	                                .build())
 	                        .setDefaultTlsConfig(TlsConfig.custom()
-	                                .setHandshakeTimeout(Timeout.ofSeconds(1))
+	                                .setHandshakeTimeout(Timeout.ofSeconds(timeOut))
 	                                .setSupportedProtocols(TLS.V_1_3)
 	                                .build())
 	                		.build())
@@ -235,7 +244,12 @@ public class DomainParser {
 		
 		try (BufferedWriter writer = Files.newBufferedWriter(Paths.get("DNS_NAMES.txt"), StandardCharsets.UTF_8 )) {
 			writer.flush();
-			map.forEach((ip, dns_names) -> {
+			
+			ArrayList<Map.Entry<String, String[]>> sorted = new ArrayList<>(map.entrySet());
+			sorted.sort(Entry.comparingByKey());
+			sorted.forEach(entry -> {
+				String ip = entry.getKey();
+				String[] dns_names = entry.getValue();
 				try
 				{
 					writer.write(ip, 0, ip.length());
@@ -262,14 +276,22 @@ public class DomainParser {
 			}
 		    System.err.format( x.getMessage());
 		}
+
+		System.out.println("End writing to file");
+		
 	}
 	
 	public void startProcess()
-	{
+	{	
 		ip_dns.clear();
 		lock = new ReentrantLock();
-		threads = new Thread[Threads + 1] ;
 		double works = Math.pow(2 , Mask);
+		
+		if(Threads > works)
+			Threads = (int)works ;
+		
+
+		threads = new Thread[Threads + 1] ;
 		double perThread = works / Threads;
 		
 		System.out.println("Running program with " + Threads + " threads and with " + (int)perThread + " ips per thread.");
