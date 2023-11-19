@@ -35,7 +35,9 @@ public class RestAPI
 			if(		ip.matcher(ctx.formParam("ip")).find() &&
 					mask.matcher(ctx.formParam("mask")).find() && 
 					threads.matcher(ctx.formParam("threads")).find() &&
-					port.matcher(ctx.formParam("port")).find() )
+					port.matcher(ctx.formParam("port")).find() &&
+					Integer.valueOf(ctx.formParam("port")) < 65536 &&
+					Integer.valueOf(ctx.formParam("mask")) < 32)
 			{
             	ctx.html("Correct fields, starting program... <div><form method=\"get\" action=\"/\">  <button>Back</button> </form></div>");
             	dp.setNewValue(ctx.formParam("ip"), Integer.valueOf(ctx.formParam("port")), Integer.valueOf(ctx.formParam("mask")), Integer.valueOf(ctx.formParam("threads")));

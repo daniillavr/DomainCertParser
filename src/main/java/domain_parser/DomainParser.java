@@ -217,11 +217,23 @@ public class DomainParser {
 	
 	static void writeToFile(Map<String, String[]> map, Thread[] threads)
 	{
-		try (BufferedWriter writer = Files.newBufferedWriter(Paths.get("DNS_NAMES.txt"), StandardCharsets.UTF_8 )) {
-			
+		try
+		{
 			for(int i = 0 ; i < threads.length -1 ; ++i )
 				threads[i].join();
-			
+		}
+		catch(InterruptedException ex)
+		{
+			return ;
+		}
+		catch(Exception ex)
+		{
+		    System.err.format(ex.getMessage());
+		}
+		
+		System.out.println("Starting writing to file");
+		
+		try (BufferedWriter writer = Files.newBufferedWriter(Paths.get("DNS_NAMES.txt"), StandardCharsets.UTF_8 )) {
 			writer.flush();
 			map.forEach((ip, dns_names) -> {
 				try
